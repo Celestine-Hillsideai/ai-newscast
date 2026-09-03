@@ -1,13 +1,50 @@
 # Phase 6 — Frontend & realtime
 
-**Status:** In progress. Next.js 16.3.4 (App Router, Turbopack) scaffolded into the existing repo
-alongside Tailwind CSS v4 and the `frontend-design` skill; `npm run dev`/`build`/`start` added.
-Homepage, generation page, result page, and both `/api/newscasts` routes are built and verified
-end-to-end **in production**: `https://ai-newscast.vercel.app`, connected to the real Trigger.dev
-`prod` backend, real Supabase database/storage — topic in → real Trigger.dev run → live realtime
-progress → verified result page with working video/audio, confirmed 2026-09-03. History page not
-yet started. GitHub repo: `Celestine-Hillsideai/ai-newscast` (private, `main` branch) → Vercel via
-its GitHub integration, auto-deploying every push per the architecture doc's section 6.
+**Status:** Done (2026-09-03). Next.js 16.3.4 (App Router, Turbopack) scaffolded into the existing
+repo alongside Tailwind CSS v4 and the `frontend-design` skill. Homepage, generation page, result
+page, history page, and both `/api/newscasts` routes are built and verified end-to-end **in
+production**: `https://ai-newscast.vercel.app`, connected to the real Trigger.dev `prod` backend,
+real Supabase database/storage. GitHub repo: `Celestine-Hillsideai/ai-newscast` (private, `main`
+branch) → Vercel via its GitHub integration (frontend) and `.github/workflows/deploy-trigger.yml`
+(backend) both auto-deploy on push, per the architecture doc's section 6.
+
+## History page + navigation (2026-09-03)
+
+- **`GET /api/newscasts`** (`src/app/api/newscasts/route.ts`, added alongside the existing POST):
+  backed by a new `listNewscasts()` in `src/lib/newscast-queries.ts`, following the same
+  shared-query-function pattern as `getNewscastDetail`. RLS (`newscasts_select_own`) scopes it to
+  the caller automatically — no explicit `user_id` filter needed.
+- **History page** (`src/app/history/page.tsx`): lists past newscasts with status, topic/headline,
+  date, and a link to the right destination (`/result/:id` once completed or failed, `/generate/:id`
+  while still running). Empty state links back to the homepage.
+- **`src/components/site-header.tsx`**: a small shared header (wordmark + History link) added to
+  the generation and result pages, which previously had no way back to history or a new newscast
+  — a real navigation gap, not scope creep, since a user who just watched a newscast generate
+  had no way to find it again short of the browser back button.
+- **Sources fixed to satisfy acceptance criterion #8 ("View source articles")**: the result page
+  previously showed only deduplicated *outlet names* (`sourceNames: string[]`), not the actual
+  articles — caught during a deliberate pass against the master spec's `FINAL ACCEPTANCE TEST`
+  list while closing out this phase. `getNewscastDetail` now returns `sources: { title, url,
+  sourceName }[]`, scoped to `newscasts.source_ids` (the deduped/verified articles the summary was
+  actually built from — not every article ever extracted for this newscast, which would include
+  ones dedup/verification rejected). The result page renders these as real clickable links to the
+  original articles, `sourceName` shown only when the article's `source_id` matched a seeded
+  `news_sources` row (several real sources — YouTube, KPMG, academic repositories — aren't in that
+  seed list, so `sourceName` is legitimately `null` for them; handled gracefully in the UI).
+
+## Acceptance pass against the master spec's FINAL ACCEPTANCE TEST (2026-09-03)
+
+Verified 1–9 against the live production deployment (10–12 are explicitly Phase 7 scope per this
+file's own "Out of scope" section above): open the site (200, renders) → enter a topic → click
+Generate (real `POST /api/newscasts` → real Trigger.dev run) → live progress
+(`useRealtimeRun`, confirmed no polling — the hook subscribes directly, no page here calls
+`setInterval`/repeated `fetch`) → summary renders → podcast plays (real MP3, confirmed
+`Content-Type: audio/mpeg`, reachable) → video plays (real MP4, confirmed
+`Content-Type: video/mp4`, reachable) → source articles viewable (real clickable links, see
+above) → refresh retains the result (server-rendered from Supabase on every request, no
+client-only state holds anything load-bearing). Not verified: actual audio/video playback and
+keyboard/mobile use in a real browser — this agent has no browser here; only structural/HTTP-level
+verification (curl, HTTP status, content-type, typecheck/lint/tests) was possible.
 
 ## The generate → result loop (2026-09-03)
 

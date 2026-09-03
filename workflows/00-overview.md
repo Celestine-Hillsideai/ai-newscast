@@ -16,13 +16,13 @@ navigable breakdown of that spec — it summarizes and points back, it never con
 
 | # | Phase | Goal | Status |
 |---|-------|------|--------|
-| 1 | Foundation | Repo, Next.js, Supabase, migrations, Trigger.dev, env config | Not started |
-| 2 | News pipeline | Discovery, extraction, source registry, deduplication | Not started |
-| 3 | Verification & summary | Verification stage, structured JSON summary, editorial safeguards | Not started |
-| 4 | Podcast | Script generation, ElevenLabs audio, storage, audio player | Not started |
-| 5 | Video | Remotion scenes, rendering, storage, video player | Not started |
-| 6 | Frontend & realtime | `frontend-design` skill UI, Trigger.dev Realtime, progress/result/history pages, accessibility | In progress |
-| 7 | Hardening | Auth, RLS, rate limiting, caching, monitoring, analytics, usage tracking, CI/CD | Not started |
+| 1 | Foundation | Repo, Next.js, Supabase, migrations, Trigger.dev, env config | Done |
+| 2 | News pipeline | Discovery, extraction, source registry, deduplication | Done |
+| 3 | Verification & summary | Verification stage, structured JSON summary, editorial safeguards | Done |
+| 4 | Podcast | Script generation, ElevenLabs audio, storage, audio player | Done |
+| 5 | Video | Remotion scenes, rendering, storage, video player | Done |
+| 6 | Frontend & realtime | `frontend-design` skill UI, Trigger.dev Realtime, progress/result/history pages, accessibility | Done |
+| 7 | Hardening | Auth, RLS, rate limiting, caching, monitoring, analytics, usage tracking, CI/CD | CI/CD done; rest not started |
 
 ## Universal Definition of Done
 

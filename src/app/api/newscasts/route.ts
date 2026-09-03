@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
 import { auth, tasks } from "@trigger.dev/sdk/v3";
 import { topicInputSchema } from "@/lib/schemas/newscast";
+import { listNewscasts } from "@/lib/newscast-queries";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+
+/**
+ * GET /api/newscasts — the history page's only path to this data (browser
+ * never queries Supabase directly, per workflows/architecture-communication.md
+ * section 4). RLS-scoped to the caller's own session.
+ */
+export async function GET() {
+  const supabase = await createSupabaseServerClient();
+  const newscasts = await listNewscasts(supabase);
+  return NextResponse.json({ newscasts });
+}
 
 /**
  * POST /api/newscasts — the only place a newscast run gets started. Runs

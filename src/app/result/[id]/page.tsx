@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getNewscastDetail } from "@/lib/newscast-queries";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { ShareControls } from "@/components/result/share-controls";
+import { SiteHeader } from "@/components/site-header";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -17,13 +18,16 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
   if (!detail) notFound();
   if (detail.status === "failed") {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-20">
-        <h1 className="mb-4 font-display text-3xl font-extrabold text-paper uppercase">
-          This newscast failed
-        </h1>
-        <p className="border border-red-400/40 bg-red-400/10 p-4 font-body text-red-300">
-          {detail.errorMessage ?? "Something went wrong before this newscast could finish."}
-        </p>
+      <main>
+        <SiteHeader />
+        <div className="mx-auto max-w-2xl px-6 py-20">
+          <h1 className="mb-4 font-display text-3xl font-extrabold text-paper uppercase">
+            This newscast failed
+          </h1>
+          <p className="border border-red-400/40 bg-red-400/10 p-4 font-body text-red-300">
+            {detail.errorMessage ?? "Something went wrong before this newscast could finish."}
+          </p>
+        </div>
       </main>
     );
   }
@@ -35,7 +39,9 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
   });
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <main>
+      <SiteHeader />
+      <div className="mx-auto max-w-3xl px-6 py-16">
       <div className="mb-8 font-mono text-xs tracking-[0.2em] text-signal uppercase">
         {dateline} &middot; Verified
       </div>
@@ -138,10 +144,28 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
         </section>
       )}
 
-      {detail.sourceNames.length > 0 && (
+      {detail.sources.length > 0 && (
         <section className="mb-10">
           <SectionLabel>Sources</SectionLabel>
-          <p className="font-mono text-sm text-static">{detail.sourceNames.join(" · ")}</p>
+          <ul className="flex flex-col gap-3">
+            {detail.sources.map((source) => (
+              <li key={source.url}>
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-body text-paper underline decoration-wire underline-offset-4 transition-colors hover:text-signal hover:decoration-signal"
+                >
+                  {source.title}
+                </a>
+                {source.sourceName && (
+                  <span className="ml-2 font-mono text-xs text-static uppercase">
+                    {source.sourceName}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
@@ -150,6 +174,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
           Confidence score: {Math.round(detail.confidenceScore * 100)}%
         </p>
       )}
+      </div>
     </main>
   );
 }

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@trigger.dev/sdk/v3";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { GenerationProgress } from "@/components/generate/generation-progress";
+import { SiteHeader } from "@/components/site-header";
 
 export default async function GeneratePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,8 +18,11 @@ export default async function GeneratePage({ params }: { params: Promise<{ id: s
   if (newscast.status === "completed") redirect(`/result/${id}`);
   if (!newscast.trigger_run_id) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-20">
-        <p className="font-mono text-static">Starting the run — refresh in a moment.</p>
+      <main>
+        <SiteHeader />
+        <div className="mx-auto max-w-2xl px-6 py-20">
+          <p className="font-mono text-static">Starting the run — refresh in a moment.</p>
+        </div>
       </main>
     );
   }
@@ -30,6 +34,7 @@ export default async function GeneratePage({ params }: { params: Promise<{ id: s
 
   return (
     <main>
+      <SiteHeader />
       <GenerationProgress
         runId={newscast.trigger_run_id}
         publicAccessToken={publicAccessToken}

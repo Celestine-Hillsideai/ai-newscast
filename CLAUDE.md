@@ -126,8 +126,11 @@ version: `node tools/check-env.mjs --group=all` (full detail:
 
 ## Current status
 
-**Phase 0 (WAT scaffold) complete.** Phase 1 (repository foundation) not started — see
-[`workflows/phase-1-foundation.md`](workflows/phase-1-foundation.md).
+**Phases 0–6 complete** and verified end-to-end in production at
+[ai-newscast.vercel.app](https://ai-newscast.vercel.app). **Phase 7 (hardening)** has one item
+done (CI/CD — both deploy targets auto-deploy on push to `main`); auth enforcement, full RLS,
+rate limiting, monitoring, analytics, and usage tracking are not yet started — see
+[`workflows/phase-7-hardening.md`](workflows/phase-7-hardening.md).
 
 <!-- BEGIN:nextjs-agent-rules -->
 

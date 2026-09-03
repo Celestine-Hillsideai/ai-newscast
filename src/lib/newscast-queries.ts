@@ -21,7 +21,7 @@ export type NewscastDetail = {
   completedAt: string | null;
   audio: { url: string; durationSeconds: number } | null;
   video: { url: string; durationSeconds: number } | null;
-  sourceNames: string[];
+  sources: { title: string; url: string; sourceName: string | null }[];
 };
 
 type NewscastRow = {
@@ -42,6 +42,7 @@ type NewscastRow = {
   confidence_score: number | null;
   created_at: string;
   completed_at: string | null;
+  source_ids: string[];
 };
 
 /**
@@ -58,7 +59,7 @@ export async function getNewscastDetail(
   const { data: newscast, error } = await supabase
     .from("newscasts")
     .select(
-      "id, topic, status, error_message, trigger_run_id, headline, dek, summary, what_happened, key_developments, why_it_matters, what_we_know, what_we_do_not_know, timeline, confidence_score, created_at, completed_at"
+      "id, topic, status, error_message, trigger_run_id, headline, dek, summary, what_happened, key_developments, why_it_matters, what_we_know, what_we_do_not_know, timeline, confidence_score, created_at, completed_at, source_ids"
     )
     .eq("id", id)
     .maybeSingle<NewscastRow>();
@@ -76,17 +77,28 @@ export async function getNewscastDetail(
   const audioAsset = mediaAssets?.find((asset) => asset.type === "audio");
   const videoAsset = mediaAssets?.find((asset) => asset.type === "video");
 
-  const { data: articles, error: articlesError } = await supabase
-    .from("articles")
-    .select("news_sources(name)")
-    .eq("newscast_id", id);
+  // Scoped to source_ids (the deduped, verified articles the summary was
+  // actually built from) — not every row under this newscast_id, which would
+  // also include articles rejected during dedup/verification.
+  const sourceIds = newscast.source_ids ?? [];
+  const { data: articles, error: articlesError } =
+    sourceIds.length > 0
+      ? await supabase
+          .from("articles")
+          .select("title, url, news_sources(name)")
+          .in("id", sourceIds)
+      : { data: [], error: null };
   if (articlesError) throw articlesError;
 
-  const sourceNames = new Set<string>();
-  for (const row of articles ?? []) {
-    const source = row.news_sources as { name?: string } | null;
-    if (source?.name) sourceNames.add(source.name);
-  }
+  const sources = (articles ?? [])
+    .filter((article): article is typeof article & { title: string; url: string } =>
+      Boolean(article.title && article.url)
+    )
+    .map((article) => ({
+      title: article.title,
+      url: article.url,
+      sourceName: (article.news_sources as { name?: string } | null)?.name ?? null,
+    }));
 
   return {
     id: newscast.id,
@@ -112,6 +124,42 @@ export async function getNewscastDetail(
     video: videoAsset?.url
       ? { url: videoAsset.url, durationSeconds: Number(videoAsset.duration_seconds ?? 0) }
       : null,
-    sourceNames: [...sourceNames],
+    sources,
   };
+}
+
+export type NewscastSummary = {
+  id: string;
+  topic: string;
+  status: NewscastStatus;
+  headline: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+/**
+ * The history page's data source, also exposed via GET /api/newscasts.
+ * RLS (newscasts_select_own) already scopes this to the caller's own rows —
+ * no explicit user_id filter needed here.
+ */
+export async function listNewscasts(
+  supabase: SupabaseClient,
+  limit = 50
+): Promise<NewscastSummary[]> {
+  const { data, error } = await supabase
+    .from("newscasts")
+    .select("id, topic, status, headline, created_at, completed_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    topic: row.topic,
+    status: row.status,
+    headline: row.headline,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+  }));
 }

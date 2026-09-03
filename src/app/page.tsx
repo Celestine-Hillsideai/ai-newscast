@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { HeroConsole } from "@/components/home/hero-console";
 import { PipelineRundown } from "@/components/home/pipeline-rundown";
 import { ChannelCards } from "@/components/home/channel-cards";
@@ -9,9 +10,12 @@ export default function HomePage() {
         <span className="font-display text-lg font-extrabold tracking-tight text-paper uppercase">
           AI NewsCast
         </span>
-        <span className="font-mono text-[0.65rem] tracking-[0.2em] text-static uppercase">
-          Est. Lagos
-        </span>
+        <div className="flex items-center gap-6 font-mono text-[0.65rem] tracking-[0.2em] text-static uppercase">
+          <Link href="/history" className="transition-colors hover:text-signal">
+            History
+          </Link>
+          <span>Est. Lagos</span>
+        </div>
       </header>
 
       <HeroConsole />
