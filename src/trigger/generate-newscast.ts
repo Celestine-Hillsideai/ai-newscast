@@ -1,6 +1,8 @@
 import { logger, task } from "@trigger.dev/sdk/v3";
+import { taskContext } from "@trigger.dev/core/v3";
 import { generateNewscastPayloadSchema } from "../lib/schemas/newscast.js";
 import { updateNewscastStatus } from "../lib/newscast-status.js";
+import { getSupabaseServiceClient } from "../lib/supabase.js";
 import { discoverNews } from "./discover-news.js";
 import { extractArticles } from "./extract-articles.js";
 import { deduplicateNews } from "./deduplicate-news.js";
@@ -26,6 +28,18 @@ export const generateNewscast = task({
   run: async (rawPayload: GenerateNewscastPayload) => {
     const payload = generateNewscastPayloadSchema.parse(rawPayload);
     const { newscastId, topic } = payload;
+
+    // The frontend can't write this itself — newscasts has no UPDATE policy
+    // for `authenticated` (only the service-role key writes status/content,
+    // per the RLS design in supabase/migrations/0001_init.sql). The
+    // generation page needs it to mint a realtime accessToken on refresh, so
+    // the orchestrator records its own run id here instead.
+    if (taskContext.ctx?.run.id) {
+      await getSupabaseServiceClient()
+        .from("newscasts")
+        .update({ trigger_run_id: taskContext.ctx.run.id })
+        .eq("id", newscastId);
+    }
 
     try {
       const discovered = await discoverNews.triggerAndWait({ newscastId, topic });

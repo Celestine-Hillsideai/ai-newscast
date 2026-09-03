@@ -51,7 +51,9 @@ export async function POST(request: Request) {
     topic,
   });
 
-  await supabase.from("newscasts").update({ trigger_run_id: handle.id }).eq("id", newscast.id);
+  // Not persisted here: newscasts has no UPDATE policy for `authenticated`
+  // (RLS — only the service-role key writes status/content). The
+  // generate-newscast task records its own trigger_run_id at startup instead.
 
   const publicAccessToken = await auth.createPublicToken({
     scopes: { read: { runs: [handle.id] } },

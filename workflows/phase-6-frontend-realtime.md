@@ -2,10 +2,12 @@
 
 **Status:** In progress. Next.js 16.3.4 (App Router, Turbopack) scaffolded into the existing repo
 alongside Tailwind CSS v4 and the `frontend-design` skill; `npm run dev`/`build`/`start` added.
-Homepage, generation page, result page, and both `/api/newscasts` routes are built and wired
-end-to-end (topic in → real Trigger.dev run → realtime progress → verified result). History page
-not yet started. GitHub repo created (`Celestine-Hillsideai/ai-newscast`, private, `main` branch);
-not yet connected to Vercel — see "Deployment" below for what's still needed.
+Homepage, generation page, result page, and both `/api/newscasts` routes are built and verified
+end-to-end **in production**: `https://ai-newscast.vercel.app`, connected to the real Trigger.dev
+`prod` backend, real Supabase database/storage — topic in → real Trigger.dev run → live realtime
+progress → verified result page with working video/audio, confirmed 2026-09-03. History page not
+yet started. GitHub repo: `Celestine-Hillsideai/ai-newscast` (private, `main` branch) → Vercel via
+its GitHub integration, auto-deploying every push per the architecture doc's section 6.
 
 ## The generate → result loop (2026-09-03)
 
@@ -42,22 +44,36 @@ not yet connected to Vercel — see "Deployment" below for what's still needed.
   unnecessary — `auth.createPublicToken()` mints everything the browser needs using only
   `TRIGGER_SECRET_KEY` server-side, so there's no separate public/client Trigger.dev key at all.
 
-**Not yet tested against a real run** — blocked on two secrets only the user can provide:
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase dashboard) and `TRIGGER_SECRET_KEY` for `prod`
-(Trigger.dev dashboard), plus enabling Anonymous Sign-ins in the Supabase dashboard (currently
-off — confirmed via `/auth/v1/settings`). Typecheck, lint, and all 37 backend tests pass; the
-homepage renders correctly in dev. The actual generate→realtime→result flow has not been
-exercised end-to-end yet.
+**Bug found and fixed during first end-to-end test (2026-09-03)**: the first local test showed
+`triggerRunId: null` forever and the generation page stuck on a "starting" fallback. Root cause:
+`POST /api/newscasts` tried to `.update({ trigger_run_id })` on `newscasts` using the caller's
+anon-key session, but that table has **no UPDATE policy for `authenticated`** (RLS — only the
+service-role key writes status/content, per `supabase/migrations/0001_init.sql`'s own comment on
+this). The write was silently a no-op. Fixed by having `generate-newscast.ts` (the orchestrator)
+record its own run id at startup instead, via `taskContext.ctx.run.id` (`@trigger.dev/core/v3`)
+and the service-role client it already has — no RLS policy changes needed, and it matches the
+existing security boundary rather than loosening it. Deployed as Trigger.dev version `20260903.5`.
+
+**Fully verified against the live production deployment (2026-09-03)**:
+`https://ai-newscast.vercel.app` → `POST /api/newscasts` → real `generate-newscast` run on
+Trigger.dev `prod` → `/generate/:id` showing live realtime stage progress → auto-redirect to
+`/result/:id` on completion, rendering the real headline, video, audio, summary, and sources.
+Anonymous-auth middleware confirmed setting a valid `is_anonymous: true` Supabase session cookie
+in production. Typecheck, lint, and all 37 backend tests pass throughout.
 
 ## Deployment
 
-GitHub repo: `https://github.com/Celestine-Hillsideai/ai-newscast` (private, default branch
-`main`). Still needed, and only the user can do these (they need account access this agent
-doesn't have): connect the repo to a Vercel project (Vercel dashboard → Import Project → this
-GitHub repo — authorizes Vercel's GitHub App), and set `NEXT_PUBLIC_SUPABASE_URL`,
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `TRIGGER_SECRET_KEY` in that Vercel project's Environment
-Variables. Once connected, every push to `main` auto-deploys per the architecture doc's section 6
-— no further action needed on this agent's part after that one-time setup.
+Live: `https://ai-newscast.vercel.app`. GitHub repo:
+`https://github.com/Celestine-Hillsideai/ai-newscast` (private, default branch `main`) → Vercel
+project `ai-newscast` (team: hillsideai) via Vercel's GitHub integration. Environment variables
+set in Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `TRIGGER_SECRET_KEY` —
+deliberately *not* `TAVILY_API_KEY`/`FIRECRAWL_API_KEY`/`OPENAI_API_KEY`/`ELEVENLABS_API_KEY`/
+`SUPABASE_SERVICE_ROLE_KEY`, which stay Trigger.dev-dashboard-only per the secret split. Note:
+Vercel's per-deployment unique URLs (e.g. `ai-newscast-<hash>-hillsideai.vercel.app`) are behind
+Vercel Authentication (SSO) by default — only the stable `ai-newscast.vercel.app` production
+domain was confirmed publicly reachable; Deployment Protection may need adjusting (Project
+Settings → Deployment Protection) if per-deployment preview URLs need to be shared externally.
+Every push to `main` auto-deploys per the architecture doc's section 6 — no manual redeploy step.
 
 ## Design notes (homepage)
 
