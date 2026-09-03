@@ -112,6 +112,24 @@ domain was confirmed publicly reachable; Deployment Protection may need adjustin
 Settings → Deployment Protection) if per-deployment preview URLs need to be shared externally.
 Every push to `main` auto-deploys per the architecture doc's section 6 — no manual redeploy step.
 
+**Found and fixed 2026-09-03 — deploys silently stopped reaching production for four commits in a
+row.** Vercel's dashboard showed every deployment after the first as **Blocked**:
+"The deployment was blocked because the commit author did not have contributing access to the
+project on Vercel. The Hobby Plan does not support collaboration for private repositories." Root
+cause: this agent's git commits were authored with `ejiconsult@gmail.com`, which GitHub resolves
+to a *different* account (`celestineug`) than the one connected to the `hillsideai` Vercel team
+(`Celestine-Hillsideai`) — Vercel treats that as an outside collaborator on a private repo and
+blocks it on the Hobby plan, regardless of the fact that pushes themselves succeeded fine (`gh`
+was authenticated as `Celestine-Hillsideai`, which has real push access — commit *authorship* and
+push *credentials* are checked separately here). Local `npm run build` succeeding was a red
+herring — the failure was Vercel-side, not a code/build problem, and only visible from the
+Deployments tab, not any log this agent could reach. Fixed by setting `git config user.email` to
+GitHub's noreply address for that specific account
+(`320505910+Celestine-Hillsideai@users.noreply.github.com`) for all future commits from this
+agent — free, no plan upgrade or repo-visibility change needed. If deploys ever silently stop
+reaching `ai-newscast.vercel.app` again, check the Deployments tab for a **Blocked** status before
+assuming it's a code issue.
+
 ## Design notes (homepage)
 
 Design direction: the product's real distinctiveness is the DISCOVER→VERIFY→SYNTHESIZE→NARRATE→
