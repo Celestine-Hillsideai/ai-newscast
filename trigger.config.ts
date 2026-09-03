@@ -2,6 +2,9 @@ import { defineConfig } from "@trigger.dev/sdk/v3";
 import { additionalFiles, aptGet } from "@trigger.dev/build/extensions/core";
 import type { BuildExtension } from "@trigger.dev/core/v3/build";
 
+// Deploys to prod automatically via .github/workflows/deploy-trigger.yml on
+// push to main — `npm run trigger:deploy` is for manual/local use only now.
+
 /**
  * Downloads Remotion's Chrome Headless Shell into the image at build time
  * instead of leaving it to a lazy runtime download on a container's first
