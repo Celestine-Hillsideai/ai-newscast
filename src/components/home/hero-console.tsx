@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const HEADLINE = "Raw noise in. Verified broadcast out.";
 
@@ -13,9 +14,12 @@ const WIRE_TOPICS = [
 ];
 
 export function HeroConsole() {
+  const router = useRouter();
   const [typed, setTyped] = useState("");
   const [done, setDone] = useState(false);
   const [topic, setTopic] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -40,10 +44,33 @@ export function HeroConsole() {
     inputRef.current?.focus();
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Wiring to POST /api/newscasts + the generation page lands in the next
-    // increment of this phase — this form validates and captures the topic.
+    if (submitting) return;
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/newscasts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        setSubmitError(body?.error ?? "Could not start the newscast. Try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      const { newscastId } = (await response.json()) as { newscastId: string };
+      router.push(`/generate/${newscastId}`);
+    } catch {
+      setSubmitError("Could not reach the server. Check your connection and try again.");
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -92,12 +119,17 @@ export function HeroConsole() {
           />
           <button
             type="submit"
-            disabled={topic.trim().length < 3}
+            disabled={topic.trim().length < 3 || submitting}
             className="border-2 border-cta bg-cta px-8 py-3 font-display text-lg font-bold tracking-wide text-ink uppercase transition-colors hover:bg-cta-dim hover:border-cta-dim disabled:cursor-not-allowed disabled:border-wire disabled:bg-wire disabled:text-static"
           >
-            Generate
+            {submitting ? "Wiring in…" : "Generate"}
           </button>
         </div>
+        {submitError && (
+          <p role="alert" className="mt-3 font-mono text-sm text-red-400">
+            {submitError}
+          </p>
+        )}
       </form>
 
       <div className="w-full overflow-hidden border-t border-b border-wire py-3">

@@ -2,8 +2,62 @@
 
 **Status:** In progress. Next.js 16.3.4 (App Router, Turbopack) scaffolded into the existing repo
 alongside Tailwind CSS v4 and the `frontend-design` skill; `npm run dev`/`build`/`start` added.
-Homepage built (design pass, not yet wired to a real backend call) — see "Design notes" below.
-Generation page, result page, history page, and both API routes not yet started.
+Homepage, generation page, result page, and both `/api/newscasts` routes are built and wired
+end-to-end (topic in → real Trigger.dev run → realtime progress → verified result). History page
+not yet started. GitHub repo created (`Celestine-Hillsideai/ai-newscast`, private, `main` branch);
+not yet connected to Vercel — see "Deployment" below for what's still needed.
+
+## The generate → result loop (2026-09-03)
+
+- **Auth**: RLS on `newscasts`/`articles`/`media_assets` requires `auth.uid()` to match, and Phase
+  6 has no login page (Phase 7). Bridged with Supabase Anonymous Sign-ins: `src/middleware.ts`
+  runs on every request and signs in anonymously if there's no session yet. This is a real
+  `auth.uid()` RLS already understands as-is — no policy changes needed — and upgrades cleanly to
+  a real account later.
+- **Supabase clients**: `src/lib/supabase-browser.ts` and `src/lib/supabase-server.ts` (new,
+  anon-key + `@supabase/ssr`, cookie-based) are separate from the existing `src/lib/supabase.ts`
+  (service-role, Trigger.dev-tasks-only — untouched). The frontend never uses the service-role key,
+  per the architecture doc's secret split.
+- **`POST /api/newscasts`** (`src/app/api/newscasts/route.ts`): validates the topic, inserts the
+  `newscasts` row under the caller's session, calls `tasks.trigger("generate-newscast", ...)` by
+  string id (not by importing the task module — that would drag Remotion's bundler/renderer into
+  the Next.js server bundle for no reason; the two deploy targets stay decoupled at the bundler
+  level too), then mints a run-scoped `publicAccessToken` via `auth.createPublicToken({ scopes: {
+  read: { runs: [runId] } } })`.
+- **`GET /api/newscasts/:id`** (`src/app/api/newscasts/[id]/route.ts`): backed by a shared
+  `getNewscastDetail()` (`src/lib/newscast-queries.ts`) also used directly by the result page's
+  server render, so the shape is defined once.
+- **Generation page** (`src/app/generate/[id]/page.tsx`, server + `src/components/generate/
+  generation-progress.tsx`, client): mints a *fresh* `publicAccessToken` server-side on every
+  visit (so a page refresh works without carrying a token in the URL), then `useRealtimeRun`
+  drives a live stage list from the real `newscastStatusEnum` values via `run.metadata.stage`.
+  Redirects to the result page automatically on completion.
+- **Result page** (`src/app/result/[id]/page.tsx`): headline, video/audio players, summary, key
+  developments, why it matters, what remains unclear, timeline, sources, confidence score, and
+  copy-link/download controls (`src/components/result/share-controls.tsx`).
+- **Homepage**: `hero-console.tsx`'s Generate button now actually calls `POST /api/newscasts` and
+  routes to `/generate/:id` on success, with an inline error state on failure.
+- **`tools/check-env.mjs`** and the secret table in `workflows/architecture-communication.md`
+  (section 5) were corrected during this pass: the anticipated `TRIGGER_PUBLIC_API_KEY` turned out
+  unnecessary — `auth.createPublicToken()` mints everything the browser needs using only
+  `TRIGGER_SECRET_KEY` server-side, so there's no separate public/client Trigger.dev key at all.
+
+**Not yet tested against a real run** — blocked on two secrets only the user can provide:
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase dashboard) and `TRIGGER_SECRET_KEY` for `prod`
+(Trigger.dev dashboard), plus enabling Anonymous Sign-ins in the Supabase dashboard (currently
+off — confirmed via `/auth/v1/settings`). Typecheck, lint, and all 37 backend tests pass; the
+homepage renders correctly in dev. The actual generate→realtime→result flow has not been
+exercised end-to-end yet.
+
+## Deployment
+
+GitHub repo: `https://github.com/Celestine-Hillsideai/ai-newscast` (private, default branch
+`main`). Still needed, and only the user can do these (they need account access this agent
+doesn't have): connect the repo to a Vercel project (Vercel dashboard → Import Project → this
+GitHub repo — authorizes Vercel's GitHub App), and set `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `TRIGGER_SECRET_KEY` in that Vercel project's Environment
+Variables. Once connected, every push to `main` auto-deploys per the architecture doc's section 6
+— no further action needed on this agent's part after that one-time setup.
 
 ## Design notes (homepage)
 

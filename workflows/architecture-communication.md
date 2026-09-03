@@ -83,8 +83,7 @@ direct-Supabase-from-browser calls with API-route calls.
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | ✅ (if tasks also read via anon client) | Public by design |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | — | Public by design, RLS-protected |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | ✅ | Server/task-only, full DB bypass — never in Vercel |
-| `TRIGGER_SECRET_KEY` | ✅ (server-only, used inside API routes) | — | Lets Vercel *trigger* runs; never in client bundle |
-| `TRIGGER_PUBLIC_API_KEY` / project ref | ✅ (client-safe, used by `useRealtimeRun`) | — | Scoped realtime subscription only |
+| `TRIGGER_SECRET_KEY` | ✅ (server-only, used inside API routes) | — | Lets Vercel *trigger* runs AND mint the per-run `publicAccessToken` (`auth.createPublicToken`) that the browser uses for `useRealtimeRun` — no separate public/client key exists or is needed |
 | `TAVILY_API_KEY` | — | ✅ | Task-only provider secret |
 | `FIRECRAWL_API_KEY` | — | ✅ | Task-only provider secret |
 | `OPENAI_API_KEY` | — | ✅ | Task-only provider secret |
