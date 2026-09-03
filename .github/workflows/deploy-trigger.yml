@@ -1,0 +1,33 @@
+name: Deploy Trigger.dev backend
+
+# Vercel's own GitHub integration deploys the Next.js app independently on
+# every push to main — this job is the other half, per
+# workflows/architecture-communication.md section 6 and
+# workflows/phase-7-hardening.md. Path-filtered so unrelated frontend-only
+# commits (e.g. src/app, src/components) don't trigger a backend deploy.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/trigger/**"
+      - "src/lib/**"
+      - "src/remotion/**"
+      - "trigger.config.ts"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx trigger.dev@4.5.15 deploy
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
