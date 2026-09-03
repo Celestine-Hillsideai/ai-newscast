@@ -1,0 +1,590 @@
+AI NEWSCAST — CODING AGENT MASTER SPECIFICATION
+
+Version: 1.1
+Frontend implementation: Claude Frontend Skill
+
+PRODUCT OBJECTIVE
+
+Build a production-quality MVP called AI NewsCast.
+
+The application allows a user to enter a Nigerian breaking-news topic. The system searches Nigerian news outlets, extracts relevant articles, deduplicates reports, verifies facts, generates a structured news briefing, creates a 3–6 minute podcast using ElevenLabs, generates a programmatic news video using Remotion, stores media in Supabase Storage, and displays the result in a web application.
+
+NON-NEGOTIABLE ARCHITECTURE
+
+Frontend:
+- Next.js
+- TypeScript
+- Tailwind CSS
+- shadcn/ui where appropriate
+- Vercel
+- The frontend UI and user experience MUST be implemented using the Claude Frontend Skill.
+- Do not independently invent an alternative frontend design system when the Claude Frontend Skill is available.
+- Follow the Claude Frontend Skill's conventions, workflow, component patterns, accessibility guidance, and implementation practices.
+- The frontend must consume backend APIs and realtime workflow state; it must not contain provider secrets or perform long-running news/media processing.
+
+Backend:
+- Trigger.dev
+- TypeScript
+
+Database:
+- Supabase PostgreSQL
+
+Authentication:
+- Supabase Auth
+
+Storage:
+- Supabase Storage
+
+Search:
+- Tavily
+
+Article extraction:
+- Firecrawl
+
+LLM:
+- OpenAI
+
+Text-to-speech:
+- ElevenLabs
+
+Video:
+- Remotion
+
+Validation:
+- Zod
+
+Monitoring:
+- Sentry
+
+Analytics:
+- PostHog
+
+Do not replace these technologies without an explicit architectural reason.
+
+CORE PRINCIPLE
+
+The application is an editorial pipeline:
+
+DISCOVER
+→ EXTRACT
+→ DEDUPLICATE
+→ VERIFY
+→ SYNTHESIZE
+→ WRITE
+→ NARRATE
+→ VISUALIZE
+→ PUBLISH
+
+Never allow the LLM to directly convert raw web results into a final video without passing through verification and structured editorial synthesis.
+
+FRONTEND IMPLEMENTATION DIRECTIVE
+
+The frontend must be built with the Claude Frontend Skill.
+
+Before implementing frontend UI:
+1. Read and follow the installed Claude Frontend Skill instructions available in the development environment.
+2. Use the skill's recommended approach for page composition, responsive design, component structure, visual hierarchy, interaction states, accessibility, and frontend polish.
+3. Keep business logic and provider integrations outside presentation components.
+4. Build reusable components rather than putting the entire UI into a single page.
+5. Implement loading, empty, success, error, and partial-generation states.
+6. Ensure the interface works on desktop and mobile.
+7. Do not expose backend secrets in client-side code.
+8. The frontend should communicate with Next.js API routes and Trigger.dev realtime functionality through clearly typed interfaces.
+
+FRONTEND PAGES
+
+Homepage:
+- Product title
+- Short value proposition
+- Topic input
+- Generate button
+- Optional example topics
+- Clear indication that the service produces both audio and video
+
+Generation state:
+- Show realtime Trigger.dev progress
+- Show current workflow stage
+- Show meaningful progress messages
+- Show source-discovery count when available
+- Show errors if generation fails
+- Allow the user to remain on the page while generation continues
+
+Result page:
+- Headline
+- Video player
+- Audio player
+- Summary
+- Key developments
+- Why it matters
+- What remains unclear
+- Timeline
+- Source list
+- Publication/retrieval timestamps
+- Share/download controls
+
+History page:
+- User's previous NewsCasts
+- Status
+- Topic
+- Date/time
+- Links to completed results
+
+FRONTEND UX STATES
+
+Implement explicit states for:
+
+queued
+researching
+extracting
+deduplicating
+verifying
+summarizing
+scripting
+generating_audio
+generating_video
+finalizing
+completed
+failed
+
+Do not rely solely on a spinner.
+
+REALTIME FRONTEND
+
+Use Trigger.dev Realtime.
+
+The API should return:
+- newscast ID
+- Trigger.dev run ID
+- public access token
+
+The frontend subscribes to the run and updates the UI without polling.
+
+Use typed workflow status data.
+
+DATABASE
+
+Create:
+- profiles
+- newscasts
+- articles
+- news_sources
+- media_assets
+- generation_events
+- usage_records
+
+Enable RLS.
+
+Users may only access their own generated content.
+
+NEWS SOURCES
+
+Initial source registry should contain:
+- Premium Times
+- Punch
+- The Guardian Nigeria
+- Channels Television
+- THISDAY
+- Vanguard
+- Daily Trust
+- BusinessDay
+- TheCable
+- Leadership
+- Tribune
+- Arise News
+- TVC News
+- Nairametrics
+
+The source registry must contain:
+- name
+- domain
+- homepage URL
+- optional RSS URL
+- priority
+- trust score
+- enabled flag
+
+Do not hard-code source configuration into business logic.
+
+TRIGGER.DEV WORKFLOW TASKS
+
+Create:
+- generate-newscast
+- discover-news
+- extract-articles
+- deduplicate-news
+- verify-news
+- summarize-news
+- generate-podcast-script
+- generate-audio
+- generate-video
+- finalize-newscast
+
+The master task must orchestrate these tasks and update the newscast status after every major stage.
+
+NEWS PROCESSING
+
+Search multiple queries for each topic.
+
+Use source-specific queries where useful.
+
+Normalize URLs.
+
+Remove duplicate URLs.
+
+Extract article content.
+
+Reject unusable article extraction results.
+
+DEDUPLICATION
+
+Use:
+1. URL normalization
+2. content/title hashing
+3. semantic similarity
+4. LLM event clustering where necessary
+
+VERIFICATION
+
+Create a dedicated verification stage.
+
+The verifier must return:
+- confirmed facts
+- conflicting claims
+- unverified claims
+- timeline
+- confidence score
+
+Do not classify a claim as confirmed merely because one low-quality source reported it.
+
+For major claims, prefer corroboration from independent credible sources.
+
+NEWS SUMMARY
+
+Return structured JSON:
+- headline
+- dek
+- summary
+- whatHappened
+- keyDevelopments
+- whyItMatters
+- whatWeKnow
+- whatWeDoNotKnow
+- timeline
+- sourceIds
+- confidenceScore
+
+Use Zod validation.
+
+PODCAST
+
+Generate a ~2 minute (260-320 word) professional spoken-news script.
+
+Do not introduce facts absent from the verified briefing.
+
+Use natural spoken language.
+
+Generate MP3 using ElevenLabs.
+
+Cache generated audio using a hash of all output-affecting parameters.
+
+VIDEO
+
+Use Remotion.
+
+Do not use generative AI video for the MVP.
+
+Create reusable React-based news graphics.
+
+Scenes:
+1. Intro
+2. Headline
+3. Key developments
+4. Timeline
+5. Why it matters
+6. Sources
+7. Outro
+
+The video must include the podcast audio.
+
+Use consistent visual branding.
+
+API
+
+Implement:
+
+POST /api/newscasts
+
+Input:
+{
+  "topic": "CBN interest rate decision"
+}
+
+Return:
+{
+  "success": true,
+  "newscastId": "uuid",
+  "runId": "trigger-run-id",
+  "publicAccessToken": "token"
+}
+
+Validate topic:
+- minimum 3 characters
+- maximum 200 characters
+
+SECURITY
+
+The frontend must never call these providers directly:
+- Tavily
+- Firecrawl
+- OpenAI
+- ElevenLabs
+
+The frontend must never receive:
+- SUPABASE_SERVICE_ROLE_KEY
+- Trigger.dev secret keys
+- provider API keys
+
+All privileged operations occur server-side.
+
+ERROR HANDLING
+
+Retry transient failures:
+- 429
+- 500
+- 502
+- 503
+- 504
+
+Do not blindly retry:
+- 400
+- 401
+- 403
+- 404
+
+All failed workflows must update the newscast status to failed and store an actionable error message.
+
+CACHING
+
+Implement caching for:
+- search results
+- extracted articles
+- summaries
+- audio
+- video
+
+Use deterministic hashes.
+
+Never regenerate identical expensive assets unnecessarily.
+
+PROMPT VERSIONING
+
+Version all production prompts.
+
+Store prompt versions in generation metadata.
+
+Do not bury unversioned prompts anonymously throughout the codebase.
+
+OBSERVABILITY
+
+Sentry:
+- API errors
+- Trigger errors
+- Remotion errors
+- client errors
+
+PostHog:
+- newscast_started
+- newscast_completed
+- video_played
+- audio_played
+- source_clicked
+- newscast_shared
+- newscast_downloaded
+
+LOGGING
+
+Every NewsCast receives a correlation ID.
+
+Every workflow log should include:
+- newscastId
+- taskId
+- stage
+- provider
+- duration
+- status
+- error if applicable
+
+PROVIDER ABSTRACTION
+
+Create interfaces for:
+- NewsSearchProvider
+- ArticleExtractionProvider
+- LLMProvider
+- TextToSpeechProvider
+- VideoRenderer
+
+Initial implementations:
+- TavilySearchProvider
+- FirecrawlArticleProvider
+- OpenAIProvider
+- ElevenLabsProvider
+- RemotionVideoProvider
+
+TESTING
+
+Implement:
+- unit tests
+- integration tests
+- end-to-end tests
+
+At minimum test:
+- topic validation
+- URL normalization
+- duplicate detection
+- article ranking
+- LLM schema validation
+- audio generation
+- storage upload
+- API workflow
+- complete happy-path NewsCast
+- realtime frontend state transitions
+
+DEVELOPMENT METHOD
+
+Implement incrementally.
+
+Do not attempt to create the entire application in one step.
+
+Phase 1:
+- Repository
+- Next.js foundation
+- Supabase
+- database migrations
+- Trigger.dev
+- environment configuration
+
+Phase 2:
+- News discovery
+- article extraction
+- source registry
+- deduplication
+
+Phase 3:
+- verification
+- structured summary
+- editorial safeguards
+
+Phase 4:
+- podcast script
+- ElevenLabs audio
+- storage
+- audio player
+
+Phase 5:
+- Remotion
+- video scenes
+- rendering
+- storage
+- video player
+
+Phase 6:
+- Claude Frontend Skill implementation/polish
+- Trigger.dev realtime
+- generation progress UI
+- result page
+- history
+- responsive behavior
+- accessibility
+
+Phase 7:
+- authentication
+- RLS hardening
+- rate limiting
+- caching
+- monitoring
+- analytics
+- usage tracking
+- production hardening
+
+After each phase:
+1. run typecheck
+2. run lint
+3. run tests
+4. fix all errors
+5. verify the phase manually
+6. document completed work
+7. proceed only when the current phase is stable
+
+CODE QUALITY
+
+Prefer:
+- small composable functions
+- strict TypeScript
+- typed interfaces
+- Zod schemas
+- dependency injection for external providers
+- centralized error handling
+- structured logging
+- environment-variable validation
+- reusable frontend components
+- accessible interactive controls
+
+Avoid:
+- giant files
+- giant functions
+- duplicated API code
+- hard-coded secrets
+- direct provider calls throughout the UI
+- untyped JSON
+- unnecessary abstractions
+- frontend components containing backend orchestration logic
+
+MEDIA STORAGE
+
+Do not store MP3/MP4 binary data in PostgreSQL.
+
+Store media in Supabase Storage.
+
+Store media metadata in PostgreSQL.
+
+Recommended buckets:
+- newscast-audio
+- newscast-video
+- newscast-images
+- newscast-thumbnails
+
+FINAL ACCEPTANCE TEST
+
+The project is complete only when a user can:
+
+1. Open the website.
+2. Enter a Nigerian breaking-news topic.
+3. Click Generate.
+4. See live progress through the frontend.
+5. See the generated news summary.
+6. Play the generated podcast.
+7. Watch the generated video.
+8. View source articles.
+9. Refresh the page and retain the generated result.
+10. Recover gracefully from a failed generation.
+11. Use the application on both desktop and mobile.
+12. Use the main interface with keyboard navigation and accessible controls.
+
+Do not mark the project complete until this end-to-end flow works in production.
+
+IMPLEMENTATION PRIORITY
+
+The primary goal is a working, fast-to-validate MVP.
+
+Do not over-engineer features that do not contribute to this flow:
+
+TOPIC
+→ SEARCH
+→ EXTRACT
+→ VERIFY
+→ SUMMARIZE
+→ PODCAST
+→ VIDEO
+→ DISPLAY
+
+The Claude Frontend Skill is responsible for guiding the frontend implementation and visual polish; Trigger.dev is responsible for long-running backend orchestration; Supabase is responsible for persistence and media storage.
