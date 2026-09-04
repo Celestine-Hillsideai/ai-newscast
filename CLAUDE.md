@@ -126,11 +126,11 @@ version: `node tools/check-env.mjs --group=all` (full detail:
 
 ## Current status
 
-**Phases 0–6 complete** and verified end-to-end in production at
-[ai-newscast.vercel.app](https://ai-newscast.vercel.app). **Phase 7 (hardening)** has one item
-done (CI/CD — both deploy targets auto-deploy on push to `main`); auth enforcement, full RLS,
-rate limiting, monitoring, analytics, and usage tracking are not yet started — see
-[`workflows/phase-7-hardening.md`](workflows/phase-7-hardening.md).
+**Phases 0–7 complete** except monitoring (Sentry), analytics (PostHog), and usage tracking,
+which the user explicitly deferred rather than set up now. Verified end-to-end in production at
+[ai-newscast.vercel.app](https://ai-newscast.vercel.app) — see
+[`workflows/phase-7-hardening.md`](workflows/phase-7-hardening.md) for the full audit (one real
+RLS gap and one orchestrator retry-cost bug were found and fixed).
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -1,12 +1,14 @@
 # Phase 7 — Hardening
 
-**Status:** In progress (started 2026-09-03). CI/CD (pulled forward earlier), RLS hardening, and
-error-handling's retry-cost fix are done. Auth is confirmed already satisfied by Phase 6's
-anonymous-auth architecture — the user explicitly decided this phase's "auth" work should be a
-hardening/verification pass, not a new login system (spec's acceptance test never tests login).
-Caching completeness and structured logging were audited and found already satisfied by earlier
-phases — no new work needed. Rate limiting on `POST /api/newscasts` is done. Not started: Sentry,
-PostHog, usage tracking (all need either external credentials or a scoping decision — see below).
+**Status:** Everything currently in scope is done as of 2026-09-03. CI/CD, RLS hardening, rate
+limiting, and the orchestrator retry-cost fix are done. Auth is confirmed already satisfied by
+Phase 6's anonymous-auth architecture — the user explicitly decided this phase's "auth" work
+should be a hardening/verification pass, not a new login system (spec's acceptance test never
+tests login). Caching completeness and structured logging were audited and found already
+satisfied by earlier phases. **Deliberately deferred by the user, not blocked**: Sentry, PostHog,
+and usage tracking (`usage_records` cost/quantity tracking) — explicitly decided against building
+these now rather than left incomplete by circumstance. Revisit if/when monitoring, analytics, or
+cost visibility become an actual need.
 
 ## Findings from this pass (2026-09-03)
 
@@ -53,9 +55,10 @@ PostHog, usage tracking (all need either external credentials or a scoping decis
   `generation_events` row per stage (`stage`, `provider`, `duration_ms`, `status`, `error`,
   `metadata`) — this table *is* the structured, queryable, per-newscast trail the spec's logging
   bullet asks for. Did not add a redundant custom logger wrapper on top of what already exists.
-- **Not started**: Sentry, PostHog (both need an account/API key from the user), usage tracking
-  (needs either real provider pricing data or an explicit decision to track quantity/duration only
-  and leave `cost_usd` null, since `usage_records` is never written anywhere yet).
+- **Deferred by explicit user decision (2026-09-03), not blocked**: Sentry and PostHog (would need
+  an account/API key from the user) and usage tracking (`usage_records` is still never written
+  anywhere) — asked about all three directly; user chose to skip for now rather than set up
+  monitoring/analytics accounts or decide on a cost-tracking approach at this time.
 
 ## Goal
 

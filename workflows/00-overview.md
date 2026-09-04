@@ -22,7 +22,7 @@ navigable breakdown of that spec — it summarizes and points back, it never con
 | 4 | Podcast | Script generation, ElevenLabs audio, storage, audio player | Done |
 | 5 | Video | Remotion scenes, rendering, storage, video player | Done |
 | 6 | Frontend & realtime | `frontend-design` skill UI, Trigger.dev Realtime, progress/result/history pages, accessibility | Done |
-| 7 | Hardening | Auth, RLS, rate limiting, caching, monitoring, analytics, usage tracking, CI/CD | CI/CD done; rest not started |
+| 7 | Hardening | Auth, RLS, rate limiting, caching, monitoring, analytics, usage tracking, CI/CD | Done except monitoring/analytics/usage tracking (deferred by user choice) |
 
 ## Universal Definition of Done
 
