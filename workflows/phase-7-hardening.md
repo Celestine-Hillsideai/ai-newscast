@@ -1,9 +1,61 @@
 # Phase 7 — Hardening
 
-**Status:** Not started, except the CI/CD bullet below — pulled forward to 2026-09-03 at the
-user's request, once the Phase 6 generate→result loop was verified working in production. Nothing
-else in this phase (auth, RLS hardening, rate limiting, Sentry, PostHog, usage tracking) has been
-started.
+**Status:** In progress (started 2026-09-03). CI/CD (pulled forward earlier), RLS hardening, and
+error-handling's retry-cost fix are done. Auth is confirmed already satisfied by Phase 6's
+anonymous-auth architecture — the user explicitly decided this phase's "auth" work should be a
+hardening/verification pass, not a new login system (spec's acceptance test never tests login).
+Caching completeness and structured logging were audited and found already satisfied by earlier
+phases — no new work needed. Rate limiting on `POST /api/newscasts` is done. Not started: Sentry,
+PostHog, usage tracking (all need either external credentials or a scoping decision — see below).
+
+## Findings from this pass (2026-09-03)
+
+- **Auth — already satisfied, no new work**: every route/page requires a session (anonymous or
+  real) via `src/middleware.ts`, and RLS scopes every table to `auth.uid()`. Verified this holds
+  even for anonymous sessions, per the user's explicit decision not to add a login UI this phase.
+- **RLS hardening — one real gap found and fixed**: audited all seven tables' policies
+  (`supabase/migrations/0001_init.sql`). Six were already correct. `newscasts_insert_own` checked
+  row ownership but not content — any client holding the anon key could insert a `newscasts` row
+  with a forged `status: 'completed'` and fabricated headline/summary directly via PostgREST,
+  bypassing the verification pipeline entirely (self-visible only — `newscasts_select_own` still
+  blocks other users from seeing it — but a real integrity gap, since the product's whole premise
+  is that nothing reaches `completed` without verification). Fixed in
+  `supabase/migrations/0005_rls_hardening.sql`, restricting inserts to exactly the shape
+  `POST /api/newscasts` creates (status='queued', every content column at its default).
+  **Not yet applied to the live database** — this agent has no way to run raw DDL (only the REST
+  data API via service-role key, not a Postgres connection or Management API token); apply via the
+  Supabase dashboard's SQL Editor, same as prior migrations.
+- **Rate limiting — done**: `src/lib/rate-limit.ts`, wired into `POST /api/newscasts`. Backed by a
+  `COUNT` query against `newscasts` itself (already RLS-scoped to the caller) rather than a new
+  table or external service (Upstash, etc.) — 3 requests per 10 minutes per user, returned as a
+  429 with `Retry-After`. Deliberately tight: each request triggers a pipeline that calls five
+  paid providers.
+- **Error handling — retry policy at the HTTP level was already correct** (`src/lib/http-retry.ts`
+  implements exactly "retry 429/5xx, never retry 400/401/403/404", used by every provider call —
+  verified via `grep`, no raw `fetch()` calls bypass it). **Found and fixed a real gap above that
+  layer**: `generate-newscast` (the orchestrator) inherited `trigger.config.ts`'s global
+  `maxAttempts: 3`, meaning any failure — including permanent ones — re-ran the *entire* pipeline
+  from scratch up to 3 times. Directly observed during Phase 5 testing: an ElevenLabs
+  `quota_exceeded` error (can never succeed on retry) caused 3 full re-runs, tripling the
+  Tavily/Firecrawl/OpenAI cost of a guaranteed failure. Fixed with a per-task `retry: { maxAttempts:
+  1 }` override on `generate-newscast` — child tasks keep their own retry safety net (Trigger.dev's
+  default 3 attempts, on top of `fetchWithRetry`'s own backoff) for transient failures; only the
+  wasteful whole-pipeline re-run is removed. A user can always click Generate again, which costs
+  the same as an automatic retry but gives them visibility instead of silent background burn.
+  `newscasts.status = 'failed'` with a stored, actionable message was already unconditional
+  (`generate-newscast.ts`'s `catch` block) — verified, not changed.
+- **Caching completeness — already satisfied, no new work**: all five spec-required surfaces
+  (search results, extracted articles, summaries, audio, video) already cache via
+  `provider_cache`/content-hash/`media_assets.hash` — verified via `grep` across `src/trigger/`,
+  not re-implemented.
+- **Structured logging — already substantially satisfied, no new abstraction added**: every task
+  logs with `newscastId` consistently, and `updateNewscastStatus` already writes a durable
+  `generation_events` row per stage (`stage`, `provider`, `duration_ms`, `status`, `error`,
+  `metadata`) — this table *is* the structured, queryable, per-newscast trail the spec's logging
+  bullet asks for. Did not add a redundant custom logger wrapper on top of what already exists.
+- **Not started**: Sentry, PostHog (both need an account/API key from the user), usage tracking
+  (needs either real provider pricing data or an explicit decision to track quantity/duration only
+  and leave `cost_usd` null, since `usage_records` is never written anywhere yet).
 
 ## Goal
 

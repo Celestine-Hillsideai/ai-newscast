@@ -3,6 +3,7 @@ import { auth, tasks } from "@trigger.dev/sdk/v3";
 import { topicInputSchema } from "@/lib/schemas/newscast";
 import { listNewscasts } from "@/lib/newscast-queries";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { checkNewscastRateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/newscasts — the history page's only path to this data (browser
@@ -46,6 +47,14 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "No session — reload and try again." }, { status: 401 });
+  }
+
+  const rateLimit = await checkNewscastRateLimit(supabase, user.id);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many newscasts requested. Please wait a few minutes and try again." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+    );
   }
 
   const { data: newscast, error: insertError } = await supabase

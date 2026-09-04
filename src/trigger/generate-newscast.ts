@@ -25,6 +25,18 @@ export type GenerateNewscastPayload = { newscastId: string; topic: string };
  */
 export const generateNewscast = task({
   id: "generate-newscast",
+  // Overrides trigger.config.ts's default maxAttempts: 3 down to 1. Each
+  // child task already retries transient HTTP failures itself (fetchWithRetry
+  // for provider calls) plus gets its own 3 Trigger.dev-level attempts from
+  // the global default — an orchestrator-level retry on top of that re-runs
+  // every already-succeeded stage from scratch, which only helps for
+  // transient failures but actively hurts for permanent ones. Observed
+  // directly during Phase 5 testing: an ElevenLabs quota_exceeded error (will
+  // never succeed on retry) caused 3 full pipeline re-runs, tripling the
+  // Tavily/Firecrawl/OpenAI cost of a guaranteed failure. A user can always
+  // just click Generate again, which costs nothing extra over an automatic
+  // retry and gives them visibility into what happened.
+  retry: { maxAttempts: 1 },
   run: async (rawPayload: GenerateNewscastPayload) => {
     const payload = generateNewscastPayloadSchema.parse(rawPayload);
     const { newscastId, topic } = payload;
